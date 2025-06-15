@@ -24,11 +24,6 @@ jobs:
           fetch-depth: 0
           clean: true
 
-      - name: Debug git status after checkout
-        run: |
-          git status
-          git diff
-
       - name: Reset any unstaged changes
         run: git reset --hard
 

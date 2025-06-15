@@ -7,8 +7,9 @@ PLANTUML_LANG="plantuml"
 INDIR="documentation/InDevelopment"
 OUTDIR="documentation/Published"
 
-# Clean up any existing diagrams in Published
-find "$OUTDIR" -type d -name diagrams -exec rm -rf {} + 2>/dev/null || true
+# Clean up Published on every run
+rm -rf "$OUTDIR"
+mkdir -p "$OUTDIR"
 
 find "$INDIR" -type f -name "*.md" | while read -r mdfile; do
   # Compute relative path from INDIR, then build output path in OUTDIR
