@@ -70,15 +70,37 @@ find . -type f -name "*.md" | while read -r mdfile; do
       imgpath="diagrams/${imgname}"
 
       if [[ -f "$pumlfile" ]]; then
-        # Render PlantUML diagram using Docker
-        docker run --rm -v "$PWD":"$PWD" -w "$PWD" plantuml/plantuml "$pumlfile" -tpng -o "$diagrams_dir"
+        # Get absolute path for Docker volume mounting
+        abs_diagrams_dir="$(realpath "$diagrams_dir")"
+        abs_pumlfile="$(realpath "$pumlfile")"
         
-        # Rename if the output name is different than expected
-        if [[ -f "$diagrams_dir/${diagram_name}.png" ]]; then
-          # File already has correct name
-          :
-        elif [[ -f "$diagrams_dir/tmp_plantuml_extract_${block_num}.png" ]]; then
-          mv -f "$diagrams_dir/tmp_plantuml_extract_${block_num}.png" "$diagrams_dir/$imgname"
+        # Render PlantUML diagram using Docker with absolute paths
+        # Use the parent directory of diagrams as working directory
+        parent_dir="$(dirname "$abs_diagrams_dir")"
+        rel_pumlfile="diagrams/$(basename "$pumlfile")"
+        
+        echo "Rendering PlantUML: $pumlfile -> $diagrams_dir/$imgname"
+        docker run --rm \
+          -v "$parent_dir":"$parent_dir" \
+          -w "$parent_dir" \
+          plantuml/plantuml \
+          "$rel_pumlfile" \
+          -tpng
+        
+        # The output should be generated as tmp_plantuml_extract_X.png in diagrams dir
+        generated_png="$diagrams_dir/tmp_plantuml_extract_${block_num}.png"
+        target_png="$diagrams_dir/$imgname"
+        
+        if [[ -f "$generated_png" ]]; then
+          # Rename to the desired name
+          mv "$generated_png" "$target_png"
+          echo "Generated: $target_png"
+        elif [[ -f "$diagrams_dir/${diagram_name}.png" ]]; then
+          # File already has correct name from @startuml directive
+          echo "Generated: $diagrams_dir/${diagram_name}.png"
+        else
+          echo "Warning: Expected PNG file not found after PlantUML generation"
+          ls -la "$diagrams_dir"
         fi
         
         # Clean up temporary file

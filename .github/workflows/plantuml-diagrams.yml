@@ -47,8 +47,21 @@ jobs:
       - name: Make render script executable
         run: chmod +x .github/scripts/render_plantuml.sh
 
+      - name: Clean up existing broken diagrams directory
+        run: |
+          echo "Cleaning up any existing nested diagrams directories..."
+          find . -path "*/diagrams/documentation" -type d -exec rm -rf {} + 2>/dev/null || true
+          find . -name "diagrams" -type d -exec sh -c 'echo "Found diagrams dir: $1"; ls -la "$1"' _ {} \;
+
       - name: Render PlantUML diagrams
         run: .github/scripts/render_plantuml.sh
+
+      - name: Debug - Show generated files
+        run: |
+          echo "=== Generated diagrams ==="
+          find . -name "diagrams" -type d -exec sh -c 'echo "Directory: $1"; ls -la "$1"' _ {} \;
+          echo "=== All PNG files ==="
+          find . -name "*.png" -type f
 
       - name: Show git status for debug
         run: |
