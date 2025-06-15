@@ -2,4 +2,4 @@
 
 ![Component_Diagram](diagrams/Component_Diagram.png)
 
-![Sequence_Diagram](diagrams/Sequence_Diagram.png)
+![State_Diagram](diagrams/State_Diagram.png)
