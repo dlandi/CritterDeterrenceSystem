@@ -1,5 +1,3 @@
-# Critter Deterrence System
-
 ## Problem Statement: Residential Critter Intrusion Management
 
 ### Problem Overview
