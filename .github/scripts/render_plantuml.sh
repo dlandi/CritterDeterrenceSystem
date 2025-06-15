@@ -7,12 +7,10 @@ PLANTUML_LANG="plantuml"
 INDIR="documentation/InDevelopment"
 OUTDIR="documentation/Published"
 
-# Clean up Published on every run
 rm -rf "$OUTDIR"
 mkdir -p "$OUTDIR"
 
 find "$INDIR" -type f -name "*.md" | while read -r mdfile; do
-  # Compute relative path from INDIR, then build output path in OUTDIR
   relpath="${mdfile#$INDIR/}"
   out_mdfile="$OUTDIR/$relpath"
   out_mddir="$(dirname "$out_mdfile")"
@@ -20,8 +18,8 @@ find "$INDIR" -type f -name "*.md" | while read -r mdfile; do
   diagrams_dir="$out_mddir/diagrams"
   mkdir -p "$diagrams_dir"
 
-  # Extract all PlantUML blocks to temp files, number them
-  awk -v prefix="$diagrams_dir/tmp_plantuml_extract_" -v lang="$PLANTUML_LANG" '
+  # Extract PlantUML blocks
+  awk -v prefix="tmp_plantuml_extract_" -v lang="$PLANTUML_LANG" '
     BEGIN { n=0; inside=0 }
     {
       if ($0 ~ "```"lang) { inside=1; n++; next }
@@ -32,9 +30,7 @@ find "$INDIR" -type f -name "*.md" | while read -r mdfile; do
 
   updated_md=""
   block_num=0
-
   mapfile -t lines < "$mdfile"
-
   i=0
   while [[ $i -lt ${#lines[@]} ]]; do
     line="${lines[$i]}"
@@ -47,10 +43,8 @@ find "$INDIR" -type f -name "*.md" | while read -r mdfile; do
         block_lines+=("${lines[$i]}")
         i=$((i+1))
       done
-      # Skip the closing ```
       i=$((i+1))
-      # Extract diagram name from @startuml line if available, fallback to mdname-blocknum
-      pumlfile="$diagrams_dir/tmp_plantuml_extract_${block_num}.puml"
+      pumlfile="tmp_plantuml_extract_${block_num}.puml"
       diagram_name=$(awk '/@startuml/ { gsub("@startuml", "", $0); gsub(/^[ \t]+|[ \t]+$/, "", $0); print $0; exit }' "$pumlfile" | tr -cd 'A-Za-z0-9_-')
       if [[ -z "$diagram_name" ]]; then
         diagram_name="${mdname}-${block_num}"
@@ -59,12 +53,11 @@ find "$INDIR" -type f -name "*.md" | while read -r mdfile; do
       imgpath="diagrams/${imgname}"
 
       if [[ -f "$pumlfile" ]]; then
-        docker run --rm -v "$PWD":"$PWD" -w "$PWD" plantuml/plantuml "$pumlfile" -tpng -o "$diagrams_dir"
-        if [[ -f "$diagrams_dir/${diagram_name}.png" ]]; then
-          :
-        elif [[ -f "$diagrams_dir/tmp_plantuml_extract_${block_num}.png" ]]; then
-          mv -f "$diagrams_dir/tmp_plantuml_extract_${block_num}.png" "$diagrams_dir/$imgname"
-        fi
+        pushd "$out_mddir" >/dev/null
+        docker run --rm -v "$PWD":"$PWD" -w "$PWD" plantuml/plantuml "../../../../../$pumlfile" -tpng -o diagrams
+        popd >/dev/null
+        mv "$out_mddir/diagrams/$pumlfile.png" "$diagrams_dir/$imgname" 2>/dev/null || \
+        mv "$out_mddir/diagrams/tmp_plantuml_extract_${block_num}.png" "$diagrams_dir/$imgname" 2>/dev/null || true
         rm -f "$pumlfile"
         updated_md+="![${diagram_name}](${imgpath})"$'\n'
       fi
@@ -76,8 +69,7 @@ find "$INDIR" -type f -name "*.md" | while read -r mdfile; do
 
   mkdir -p "$out_mddir"
   printf "%s" "$updated_md" > "$out_mdfile"
+  # Clean up any tmp puml/png in out_mddir/diagrams (for safety)
+  rm -f "$out_mddir/diagrams/tmp_plantuml_extract_"*
+  rm -f tmp_plantuml_extract_*
 done
-
-# Cleanup temp files
-find "$OUTDIR" -type f -name 'tmp_plantuml_extract_*.puml' -delete 2>/dev/null || true
-find "$OUTDIR" -type f -name 'tmp_plantuml_extract_*.png' -delete 2>/dev/null || true
