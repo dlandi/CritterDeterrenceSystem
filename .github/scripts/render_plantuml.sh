@@ -4,13 +4,19 @@ set -euo pipefail
 
 PLANTUML_LANG="plantuml"
 
-# Cleanup any temporary files from previous runs
-find . -type f -name 'tmp_plantuml_extract_*.puml' -delete 2>/dev/null || true
+INDIR="documentation/InDevelopment"
+OUTDIR="documentation/Published"
 
-find . -type f -name "*.md" | while read -r mdfile; do
-  mddir="$(dirname "$mdfile")"
+# Clean up any existing diagrams in Published
+find "$OUTDIR" -type d -name diagrams -exec rm -rf {} + 2>/dev/null || true
+
+find "$INDIR" -type f -name "*.md" | while read -r mdfile; do
+  # Compute relative path from INDIR, then build output path in OUTDIR
+  relpath="${mdfile#$INDIR/}"
+  out_mdfile="$OUTDIR/$relpath"
+  out_mddir="$(dirname "$out_mdfile")"
   mdname="$(basename "${mdfile%.*}")"
-  diagrams_dir="$mddir/diagrams"
+  diagrams_dir="$out_mddir/diagrams"
   mkdir -p "$diagrams_dir"
 
   # Extract all PlantUML blocks to temp files, number them
@@ -53,7 +59,6 @@ find . -type f -name "*.md" | while read -r mdfile; do
 
       if [[ -f "$pumlfile" ]]; then
         docker run --rm -v "$PWD":"$PWD" -w "$PWD" plantuml/plantuml "$pumlfile" -tpng -o "$diagrams_dir"
-        # Rename if the output name is different than expected
         if [[ -f "$diagrams_dir/${diagram_name}.png" ]]; then
           :
         elif [[ -f "$diagrams_dir/tmp_plantuml_extract_${block_num}.png" ]]; then
@@ -68,9 +73,10 @@ find . -type f -name "*.md" | while read -r mdfile; do
     fi
   done
 
-  printf "%s" "$updated_md" > "$mdfile"
+  mkdir -p "$out_mddir"
+  printf "%s" "$updated_md" > "$out_mdfile"
 done
 
-# Cleanup any temp files left (robustness)
-find . -type f -name 'tmp_plantuml_extract_*.puml' -delete 2>/dev/null || true
-find . -type f -name 'tmp_plantuml_extract_*.png' -delete 2>/dev/null || true
+# Cleanup temp files
+find "$OUTDIR" -type f -name 'tmp_plantuml_extract_*.puml' -delete 2>/dev/null || true
+find "$OUTDIR" -type f -name 'tmp_plantuml_extract_*.png' -delete 2>/dev/null || true

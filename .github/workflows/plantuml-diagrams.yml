@@ -3,7 +3,7 @@ name: Render PlantUML Diagrams
 on:
   push:
     paths:
-      - '**/*.md'
+      - 'documentation/InDevelopment/**/*.md'
       - '.github/workflows/plantuml-diagrams.yml'
       - '.github/scripts/render_plantuml.sh'
   workflow_dispatch:
@@ -47,33 +47,27 @@ jobs:
       - name: Make render script executable
         run: chmod +x .github/scripts/render_plantuml.sh
 
-      - name: Clean up existing broken diagrams directory
-        run: |
-          echo "Cleaning up any existing nested diagrams directories..."
-          find . -path "*/diagrams/documentation" -type d -exec rm -rf {} + 2>/dev/null || true
-          find . -name "diagrams" -type d -exec sh -c 'echo "Found diagrams dir: $1"; ls -la "$1"' _ {} \;
-
-      - name: Render PlantUML diagrams
+      - name: Render PlantUML diagrams to Published
         run: .github/scripts/render_plantuml.sh
 
       - name: Debug - Show generated files
         run: |
-          echo "=== Generated diagrams ==="
-          find . -name "diagrams" -type d -exec sh -c 'echo "Directory: $1"; ls -la "$1"' _ {} \;
-          echo "=== All PNG files ==="
-          find . -name "*.png" -type f
+          echo "=== Published folders ==="
+          find documentation/Published -type d
+          echo "=== Published diagrams ==="
+          find documentation/Published -name "*.png" -type f
 
       - name: Show git status for debug
         run: |
           git status
           git diff --stat
 
-      - name: Auto-commit rendered diagrams
+      - name: Auto-commit rendered diagrams and published docs
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Auto-generate PlantUML diagrams for CritterDeterrenceSystem"
+          commit_message: "Publish PlantUML diagrams and transformed docs"
           add_options: -A
-          file_pattern: .
+          file_pattern: documentation/Published
           commit_user_name: github-actions[bot]
           commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
           commit_author: dlandi <3196088+dlandi@users.noreply.github.com>
