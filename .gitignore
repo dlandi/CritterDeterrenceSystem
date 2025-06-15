@@ -52,3 +52,8 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+/documentation/.vs/documentation/CopilotIndices/17.12.38.29086
+/documentation/.vs/documentation/FileContentIndex
+/documentation/.vs/documentation/FileContentIndex/381bca2e-0961-4274-b410-5ba624010f0c.vsidx
+/documentation/.vs/documentation/FileContentIndex/e366173a-ab51-42cd-b6e1-11fb51da9d7b.vsidx
+*.sqlite
