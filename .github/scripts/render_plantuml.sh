@@ -6,7 +6,7 @@ set -euo pipefail
 # - Scans all .md files for PlantUML code blocks
 # - For each .md, creates a diagrams/ subfolder in the same directory if needed
 # - Renders each PlantUML block to a PNG in that folder
-# - Inserts or replaces an image link after each PlantUML block using a relative path based on diagram name
+# - REPLACES each PlantUML block with an image link using a relative path based on diagram name
 
 PLANTUML_LANG="plantuml"
 
@@ -40,25 +40,17 @@ find . -type f -name "*.md" | while read -r mdfile; do
     # Check for PlantUML code block start
     if [[ "$line" == \`\`\`"$PLANTUML_LANG"* ]]; then
       block_num=$((block_num+1))
-      block_lines=()
-      block_lines+=("$line")
-      i=$((i+1))
       
-      # Collect all lines until closing ```
+      # Skip all lines until closing ``` (consume the entire PlantUML block)
+      i=$((i+1))
       while [[ $i -lt ${#lines[@]} && "${lines[$i]}" != '```' ]]; do
-        block_lines+=("${lines[$i]}")
         i=$((i+1))
       done
       
-      # Add the closing ``` line
+      # Skip the closing ``` line too
       if [[ $i -lt ${#lines[@]} ]]; then
-        block_lines+=("${lines[$i]}")
+        i=$((i+1))
       fi
-
-      # Add the PlantUML block to output
-      for block_line in "${block_lines[@]}"; do
-        updated_md+="$block_line"$'\n'
-      done
 
       # Extract diagram name from @startuml line if available, fallback to mdname-blocknum
       pumlfile="$diagrams_dir/tmp_plantuml_extract_${block_num}.puml"
@@ -69,48 +61,73 @@ find . -type f -name "*.md" | while read -r mdfile; do
       imgname="${diagram_name}.png"
       imgpath="diagrams/${imgname}"
 
-      if [[ -f "$pumlfile" ]]; then
-        # Get absolute path for Docker volume mounting
-        abs_diagrams_dir="$(realpath "$diagrams_dir")"
-        abs_pumlfile="$(realpath "$pumlfile")"
-        
-        # Render PlantUML diagram using Docker with absolute paths
-        # Use the parent directory of diagrams as working directory
-        parent_dir="$(dirname "$abs_diagrams_dir")"
-        rel_pumlfile="diagrams/$(basename "$pumlfile")"
-        
-        echo "Rendering PlantUML: $pumlfile -> $diagrams_dir/$imgname"
-        docker run --rm \
-          -v "$parent_dir":"$parent_dir" \
-          -w "$parent_dir" \
-          plantuml/plantuml \
-          "$rel_pumlfile" \
-          -tpng
-        
-        # The output should be generated as tmp_plantuml_extract_X.png in diagrams dir
-        generated_png="$diagrams_dir/tmp_plantuml_extract_${block_num}.png"
-        target_png="$diagrams_dir/$imgname"
-        
-        if [[ -f "$generated_png" ]]; then
-          # Rename to the desired name
-          mv "$generated_png" "$target_png"
-          echo "Generated: $target_png"
-        elif [[ -f "$diagrams_dir/${diagram_name}.png" ]]; then
-          # File already has correct name from @startuml directive
-          echo "Generated: $diagrams_dir/${diagram_name}.png"
-        else
-          echo "Warning: Expected PNG file not found after PlantUML generation"
-          ls -la "$diagrams_dir"
+      # Check if the next few lines already contain an image reference for this diagram
+      # If so, skip adding another one
+      next_lines=""
+      for j in $(seq $i $((i+5))); do
+        if [[ $j -lt ${#lines[@]} ]]; then
+          next_lines+="${lines[$j]}"$'\n'
+        fi
+      done
+      
+      # Only add image if it doesn't already exist in the next few lines
+      if [[ "$next_lines" != *"![${diagram_name}]"* && "$next_lines" != *"$imgpath"* ]]; then
+        if [[ -f "$pumlfile" ]]; then
+          # Get absolute path for Docker volume mounting
+          abs_diagrams_dir="$(realpath "$diagrams_dir")"
+          abs_pumlfile="$(realpath "$pumlfile")"
+          
+          # Render PlantUML diagram using Docker with absolute paths
+          # Use the parent directory of diagrams as working directory
+          parent_dir="$(dirname "$abs_diagrams_dir")"
+          rel_pumlfile="diagrams/$(basename "$pumlfile")"
+          
+          echo "Rendering PlantUML: $pumlfile -> $diagrams_dir/$imgname"
+          docker run --rm \
+            -v "$parent_dir":"$parent_dir" \
+            -w "$parent_dir" \
+            plantuml/plantuml \
+            "$rel_pumlfile" \
+            -tpng
+          
+          # The output should be generated as tmp_plantuml_extract_X.png in diagrams dir
+          generated_png="$diagrams_dir/tmp_plantuml_extract_${block_num}.png"
+          target_png="$diagrams_dir/$imgname"
+          
+          if [[ -f "$generated_png" ]]; then
+            # Rename to the desired name
+            mv "$generated_png" "$target_png"
+            echo "Generated: $target_png"
+          elif [[ -f "$diagrams_dir/${diagram_name}.png" ]]; then
+            # File already has correct name from @startuml directive
+            echo "Generated: $diagrams_dir/${diagram_name}.png"
+          else
+            echo "Warning: Expected PNG file not found after PlantUML generation"
+            ls -la "$diagrams_dir"
+          fi
+          
+          # Clean up temporary file
+          rm -f "$pumlfile"
         fi
         
+        # REPLACE the PlantUML block with image reference
+        updated_md+=""$'\n'"![${diagram_name}](${imgpath})"$'\n'
+      else
+        echo "Skipping duplicate image for $diagram_name - already exists"
         # Clean up temporary file
         rm -f "$pumlfile"
-        
-        # Add image reference after the PlantUML block
-        updated_md+=""$'\n'"![${diagram_name}](${imgpath})"$'\n'
       fi
+      
+      # Continue to next iteration (don't increment i again)
+      continue
     else
-      updated_md+="$line"$'\n'
+      # Skip existing standalone image references that match our pattern
+      if [[ "$line" =~ ^\!\[.*\]\(diagrams\/.*\.png\)$ ]]; then
+        echo "Removing existing duplicate image reference: $line"
+        # Skip this line (don't add it to updated_md)
+      else
+        updated_md+="$line"$'\n'
+      fi
     fi
     i=$((i+1))
   done
