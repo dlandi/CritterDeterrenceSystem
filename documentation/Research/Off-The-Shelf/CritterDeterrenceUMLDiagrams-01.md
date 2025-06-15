@@ -121,6 +121,8 @@ deactivate Shelly
 
 ![Component_Diagram](diagrams/Component_Diagram.png)
 
+![Component_Diagram](diagrams/Component_Diagram.png)
+
 ```plantuml
 @startuml State_Diagram
 title State Diagram - System States
@@ -324,5 +326,7 @@ stop
 @enduml
 ```  
   
+
+![Sequence_Diagram](diagrams/Sequence_Diagram.png)
 
 ![Sequence_Diagram](diagrams/Sequence_Diagram.png)

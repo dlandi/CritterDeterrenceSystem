@@ -71,6 +71,8 @@ PM --> PWR : Monitor
 
 ![Attic_Component_Diagram](diagrams/Attic_Component_Diagram.png)
 
+![Attic_Component_Diagram](diagrams/Attic_Component_Diagram.png)
+
 This component diagram illustrates the hardware abstraction layers and software services. The Meadow F7's GPIO pins interface with sensors and control relays through level shifters to handle voltage differences. The ESP32 coprocessor manages network connectivity independently, ensuring reliable cloud communication. Software components follow a service-oriented architecture with clear separation between detection, control, and communication responsibilities.
 
 ## Class Structure
@@ -197,6 +199,8 @@ StateMachine --> Trigger
 
 ![Attic_Class_Diagram](diagrams/Attic_Class_Diagram.png)
 
+![Attic_Class_Diagram](diagrams/Attic_Class_Diagram.png)
+
 The class architecture employs dependency injection through interfaces, enabling unit testing and component substitution. The `AtticApp` class inherits from Meadow's base application class, overriding initialization and run methods. Deterrent classes encapsulate hardware control logic, while the state machine ensures predictable system behavior. The `ShellyRelay` class demonstrates HTTP-based control of smart devices, extending the system's capabilities beyond direct GPIO control.
 
 ## Motion Detection Sequence
@@ -264,6 +268,8 @@ MS -> SM : FireAsync(MotionEnd)
 
 @enduml
 ```
+
+![Attic_Sequence_Diagram](diagrams/Attic_Sequence_Diagram.png)
 
 ![Attic_Sequence_Diagram](diagrams/Attic_Sequence_Diagram.png)
 
@@ -345,6 +351,8 @@ ErrorRecovery --> Idle : Connection Restored
 
 ![Attic_State_Diagram](diagrams/Attic_State_Diagram.png)
 
+![Attic_State_Diagram](diagrams/Attic_State_Diagram.png)
+
 The hierarchical state machine manages system complexity through nested states and guarded transitions. The initialization sequence ensures all components are ready before entering operational states. The cooldown period prevents rapid retriggering that could annoy neighbors or drain power. Error recovery states maintain local functionality during network outages, with the system continuing to respond to motion events even without cloud connectivity. State persistence across power cycles ensures the system returns to its previous armed/disarmed state.
 
 ## Physical Deployment
@@ -417,6 +425,8 @@ note bottom of POWER : Professional installation\nrequired for mains wiring
 
 @enduml
 ```
+
+![Attic_Deployment_Diagram](diagrams/Attic_Deployment_Diagram.png)
 
 ![Attic_Deployment_Diagram](diagrams/Attic_Deployment_Diagram.png)
 
